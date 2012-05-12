@@ -6,6 +6,8 @@ import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.egl.EGLSurface;
 
+import uk.co.armedpineapple.corsixth.gestures.TwoFingerMoveGesture;
+
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.PixelFormat;
@@ -18,6 +20,7 @@ import android.view.GestureDetector;
 import android.view.GestureDetector.OnGestureListener;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -30,7 +33,7 @@ import com.bugsense.trace.BugSenseHandler;
  * 
  * Because of this, that's where we set up the SDL thread
  */
-class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
+public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 		View.OnKeyListener, View.OnTouchListener, SensorEventListener,
 		OnGestureListener {
 
@@ -48,7 +51,9 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 	// Sensors
 	private static SensorManager mSensorManager;
 
-	private GestureDetector gestureDetector;
+	private GestureDetector longPressGestureDetector;
+	private ScaleGestureDetector moveGestureDetector;
+	
 
 	// Startup
 	public SDLSurface(Context context, int width, int height) {
@@ -61,8 +66,9 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 		requestFocus();
 		setOnKeyListener(this);
 		setOnTouchListener(this);
-		gestureDetector = new GestureDetector(context, this);
-		gestureDetector.setIsLongpressEnabled(true);
+		moveGestureDetector = new ScaleGestureDetector(context, new TwoFingerMoveGesture());
+		longPressGestureDetector = new GestureDetector(context, this);
+		longPressGestureDetector.setIsLongpressEnabled(true);
 
 		mSensorManager = (SensorManager) context.getSystemService("sensor");
 
@@ -286,8 +292,9 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 	 */
 	public boolean onTouch(View v, MotionEvent event) {
 		// Forward event to the gesture detector.
-		gestureDetector.onTouchEvent(event);
-		
+		longPressGestureDetector.onTouchEvent(event);
+		moveGestureDetector.onTouchEvent(event);
+
 		int action = event.getAction();
 
 		float x = ((float) this.width / v.getWidth()) * event.getX();
@@ -296,7 +303,7 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 		int pc = event.getPointerCount();
 
 		// TODO: Anything else we need to pass?
-		SDLActivity.onNativeTouch(action, x, y, p, pc);
+		SDLActivity.onNativeTouch(action, x, y, p, pc, 0);
 
 		return true;
 	}
@@ -339,15 +346,13 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 	@Override
 	public void onLongPress(MotionEvent event) {
 		Log.d(getClass().getSimpleName(), "Detected long press");
-		
-		int action = 905; // Constant for long press
 
 		float x = ((float) this.width / this.getWidth()) * event.getX();
 		float y = ((float) this.height / this.getHeight()) * event.getY();
 		float p = event.getPressure();
 		int pc = event.getPointerCount();
-		
-		SDLActivity.onNativeTouch(action, x, y, p, pc);
+
+		SDLActivity.onNativeTouch(0, x, y, p, pc, 1);
 	}
 
 	@Override
